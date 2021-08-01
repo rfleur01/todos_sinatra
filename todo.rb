@@ -8,6 +8,38 @@ configure do
   set :sesstion_secret, 'secret'
 end
 
+helpers do
+  def list_complete?(list)
+    todos_count(list) > 0 && todos_remaining_count(list) == 0
+  end
+
+  def list_class(list)
+    "complete" if list_complete?(list)
+  end
+
+  def todos_count(list)
+    list[:todos].size
+  end
+
+  def todos_remaining_count(list)
+    list[:todos].select { |todo| !todo[:completed] }.size
+  end
+
+  def sort_lists(lists, &block)
+    complete_lists, incomplete_lists = lists.partition { |list| list_complete?(lists) }
+
+    incomplete_lists.each { |list| yield list, lists.index(list) }
+    complete_lists.each { |list| yield list, lists.index(list) }
+  end
+
+  def sort_todos(todos, &block)
+    complete_todos, incomplete_todos = todos.partition { |todo| todo[:completed] }
+
+    incomplete_todos.each { |todo| yield todo, todos.index(todo) }
+    complete_todos.each { |todo| yield todo, todos.index(todo) }
+  end
+end
+
 before do
   session[:lists] ||= []
 end
@@ -19,7 +51,6 @@ end
 # View list of lists
 get "/lists" do
   @lists = session[:lists]
-
   erb :lists, layout: :layout
 end
 
@@ -126,5 +157,30 @@ post "/lists/:list_id/todos/:id/destroy" do
   todo_id = params[:id].to_i
   @list[:todos].delete_at todo_id
   session[:success] = "The todo has been deleted."
+  redirect "/list/#{@list_id}"
+end
+
+# Update the status of a todo
+post "/lists/:list_id/todos/:id" do
+  @list_id = params[:list_id].to_i
+  @list = session[:lists][@list_id]
+  
+  todo_id = params[:id].to_i
+  is_completed = params[:completed] == "true"
+  @list[:todos][todo_id][:completed] = is_completed
+  session[:success] = "The todo has been updated."
+  redirect "/list/#{@list_id}"
+end
+
+# Mark all todos as complete for our list
+post "/lists/:list_id/complete_all" do
+  @list_id = params[:list_id].to_i
+  @list = session[:lists][@list_id]
+
+  @list[:todos].each do |todo|
+    todo[:completed] = true
+  end
+
+  session[:success] = "All todos have been completed"
   redirect "/list/#{@list_id}"
 end
