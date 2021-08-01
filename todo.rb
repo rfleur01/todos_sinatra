@@ -1,11 +1,11 @@
 require "sinatra"
-require "sinatra/reloader"
+require "sinatra/reloader" if development?
 require "sinatra/content_for"
 require "tilt/erubis"
 
 configure do
   enable :sessions
-  set :sesstion_secret, 'secret'
+  set :session_secret, 'secret'
 end
 
 helpers do
@@ -26,7 +26,7 @@ helpers do
   end
 
   def sort_lists(lists, &block)
-    complete_lists, incomplete_lists = lists.partition { |list| list_complete?(lists) }
+    complete_lists, incomplete_lists = lists.partition { |list| list_complete?(list) }
 
     incomplete_lists.each { |list| yield list, lists.index(list) }
     complete_lists.each { |list| yield list, lists.index(list) }
